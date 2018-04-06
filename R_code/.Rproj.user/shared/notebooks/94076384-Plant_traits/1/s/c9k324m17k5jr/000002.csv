@@ -1,0 +1,7 @@
+"0","mwpv = sapply(c(3,5,6), function(x) wilcox.test(can[1:150, x], can[151:300,x],  exact = F)$p.value)"
+"0","colnames(can)[c(3,5,6)[which(mwpv < 0.05)]]"
+"1","[1]"
+"1"," ""shrub_height_cm""        "
+"1"," ""moss_layer_thickness_cm"""
+"1","
+"

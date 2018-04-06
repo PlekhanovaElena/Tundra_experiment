@@ -1,0 +1,114 @@
+---
+title: "Plant traits"
+output: html_notebook
+---
+
+```{r}
+library(xlsx)
+library(ggplot2)
+library(ggpubr)
+source("./functions.R")
+```
+
+# Canoppy traits
+
+```{r Reading the canopy sheet of plant_traits table, message=FALSE, warning=FALSE}
+can_path <- "/home/lena/Tundra_exp/plant_traits_DPE.xlsx"
+can <- read.xlsx(can_path, 3)
+
+clmn = colnames(can) %in% c("block", "plot", "shrub_height_cm", "forb_height_cm", "graminoid_height_cm", "moss_layer_thickness_cm", "litter_layer_thickness_cm")
+can = can[!is.na(can$block),clmn]
+cols = c(3:7);    
+can[,cols] = apply(can[,cols], 2, function(x) as.numeric(as.character(x)))
+can[,1] = factor(can[,1],levels(can[,1])[c(1,3:10,2)])
+
+rm(clmn, can_path)
+```
+
+Number of pairs within plot that have significant differences according to Mann-Witney test
+```{r}
+n_samp = 10
+cl =  6
+tpv1 = sapply(c(0:9), function(x) wilcox.test(can[(1 + n_samp*3*x):(n_samp*3*x+5), cl], can[(1 + n_samp*3*x + 5):(n_samp*3*x+n_samp*2), cl],  exact = F)$p.value)
+tpv2 = sapply(c(0:9), function(x) wilcox.test(can[(1 + n_samp*3*x):(n_samp*3*x+n_samp), cl], can[(1 + n_samp*3*x + n_samp*2):(n_samp*3*x+n_samp*3), cl],  exact = F)$p.value)
+tpv3 = sapply(c(0:9), function(x) wilcox.test(can[(1 + n_samp*3*x + n_samp):(n_samp*3*x+n_samp*2), cl], can[(1 + n_samp*3*x + n_samp*2):(n_samp*3*x+n_samp*3), cl],  exact = F)$p.value)
+sum(c(tpv1, tpv2, tpv3) < 0.05)
+```
+
+Number of plots that have significant differences within ones according to Kruskal-Wallis test
+```{r}
+cl =  6
+krpv = sapply(c(0:9), function(x) kruskal.test(can[(1 + n_samp*3*x):(n_samp*3*x+n_samp), cl], can[(1 + n_samp*3*x + n_samp):(n_samp*3*x+n_samp*2), cl], can[(1 + n_samp*3*x + n_samp*2):(n_samp*3*x+n_samp*3), cl])$p.value)
+sum(krpv < 0.05)
+```
+
+## Differences within plots and between plots
+
+Plots show mean of a variable with confidence intervals
+
+```{r, message=FALSE, warning=FALSE}
+ynames = colnames(can)[3:ncol(can)]
+
+plot_diff(can, ynames[1])
+plot_diff(can, ynames[2])
+plot_diff(can, ynames[3])
+plot_diff(can, ynames[4])
+plot_diff(can, ynames[5])
+
+```
+## Dry/wet
+
+Mann-Witney shows significant differences between dry and lake-bed in means of 
+```{r}
+mwpv = sapply(c(3,5,6), function(x) wilcox.test(can[1:150, x], can[151:300,x],  exact = F)$p.value)
+colnames(can)[c(3,5,6)[which(mwpv < 0.05)]]
+```
+
+# Individual plant traits
+
+
+```{r Reading the individual plant traits sheet of plant_traits table, message=FALSE, warning=FALSE}
+ind_path <- "/home/lena/Tundra_exp/plant_traits_DPE.xlsx"
+ind <- read.xlsx(ind_path, 2)
+
+ind = ind[!is.na(ind$block),]
+ind = ind[,-12]
+cols = c(6:ncol(ind));    
+ind[,cols] = apply(ind[,cols], 2, function(x) as.numeric(as.character(x)))
+ind[,1] = factor(ind[,1],levels(ind[,1])[c(1,3:10,2)])
+
+
+rm(clmn, ind_path)
+```
+
+## Differences within plots and between plots
+
+Plots show mean of a variable with confidence intervals
+
+```{r, message=FALSE, warning=FALSE}
+ynames = colnames(ind)[cols]
+
+plot_diff(ind, ynames[1])
+plot_diff(ind, ynames[2])
+plot_diff(ind, ynames[3])
+plot_diff(ind, ynames[4])
+plot_diff(ind, ynames[5])
+plot_diff(ind, ynames[6])
+plot_diff(ind, ynames[7])
+plot_diff(ind, ynames[8])
+plot_diff(ind, ynames[9])
+plot_diff(ind, ynames[10])
+plot_diff(ind, ynames[11])
+plot_diff(ind, ynames[12])
+plot_diff(ind, ynames[13])
+```
+
+## Dry/wet
+
+Mann-Witney shows significant differences between dry and lake-bed in means of 
+```{r}
+mwpv = sapply(cols, function(x) wilcox.test(ind[ind$site == "ridge", x], ind[ind$site == "lakebed", x],  exact = F)$p.value)
+colnames(ind)[cols[which(mwpv < 0.05)]]
+```
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).

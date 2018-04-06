@@ -1,0 +1,7 @@
+"0","cl =  6"
+"0","krpv = sapply(c(0:9), function(x) kruskal.test(can[(1 + n_samp*3*x):(n_samp*3*x+n_samp), cl], can[(1 + n_samp*3*x + n_samp):(n_samp*3*x+n_samp*2), cl], can[(1 + n_samp*3*x + n_samp*2):(n_samp*3*x+n_samp*3), cl])$p.value)"
+"0","sum(krpv < 0.05)"
+"1","[1]"
+"1"," 0"
+"1","
+"

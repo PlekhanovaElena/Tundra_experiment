@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "## Gives count, mean, standard deviation, standard error of the mean, and confidence interval (default 95%).\n##   data: a data frame.\n##   measurevar: the name of a column that contains the variable to be summariezed\n##   groupvars: a vector containing names of columns that contain grouping variables\n##   na.rm: a boolean that indicates whether to ignore NA's\n##   conf.interval: the percent range of the confidence interval (default is 95%)\nsummarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,\n                      conf.interval=.95, .drop=TRUE) {\n  # New version of length which can handle NA's: if na.rm==T, don't count them\n  length2 <- function (x, na.rm=FALSE) {\n    if (na.rm) sum(!is.na(x))\n    else       length(x)\n  }\n  \n  # This does the summary. For each group's data frame, return a vector with\n  # N, mean, and sd\n  datac <- plyr::ddply(data, groupvars, .drop=.drop,\n                 .fun = function(xx, col) {\n                   c(N    = length2(xx[[col]], na.rm=na.rm),\n                     mean = mean   (xx[[col]], na.rm=na.rm),\n                     sd   = sd     (xx[[col]], na.rm=na.rm)\n                   )\n                 },\n                 measurevar\n  )\n  \n  # Rename the \"mean\" column\n  datac <- plyr::rename(datac, c(\"mean\" = measurevar))\n  \n  datac$se <- datac$sd / sqrt(datac$N)  # Calculate standard error of the mean\n  \n  # Confidence interval multiplier for standard error\n  # Calculate t-statistic for confidence interval: \n  # e.g., if conf.interval is .95, use .975 (above/below), and use df=N-1\n  ciMult <- qt(conf.interval/2 + .5, datac$N-1)\n  datac$ci <- datac$se * ciMult\n  \n  return(datac)\n}\n\n# Function that plots differences between plots and blocks with confidence intervals\n#\nplot_diff <- function(dat, yname, varname) {\n  sins <- summarySE(dat, measurevar=yname, groupvars=c(\"block\",\"plot\"), na.rm = T)\n  sins2 <- summarySE(dat, measurevar=yname, groupvars=c(\"block\"), na.rm = T)\n  colnames(sins)[4] = \"y\"\n  colnames(sins2)[3] = \"y\"\n  sins2$type = mean(sins2$y[sins2$block %in% levels(sins2$block)[1:5]])\n  sins2$type[sins2$block %in% levels(sins2$block)[6:10]] = mean(sins2$y[sins2$block %in% levels(sins2$block)[6:10]])\n  \n  pd <- position_dodge(0.1) # move them .05 to the left and right\n  cbPalette <- c(\"#999999\", \"#E69F00\", \"#56B4E9\", \"#009E73\", \"#F0E442\", \"#0072B2\", \"#D55E00\", \"#FF3399\", \"#663300\", \"#993399\")\n  \n  # Use 95% confidence interval instead of SEM\n  gg1 = ggplot(sins, aes(x=plot, y=y, colour=block)) + \n    geom_errorbar(aes(ymin=y-ci, ymax=y+ci), width=.1, position=pd) +\n    ylab(yname) +\n    geom_point(position=pd) + theme_bw() + scale_colour_manual(values=cbPalette) +\n    ggtitle(varname) + theme(plot.title = element_text(hjust = 0.5))\n  \n  gg2 = ggplot(sins2, aes(x=block, y=y, colour=block, , group = type)) + \n    geom_errorbar(aes(ymin=y-ci, ymax=y+ci), width=.1, position=pd) +\n    ylab(yname) +\n    geom_point(position=pd) + theme_bw() + scale_colour_manual(values=cbPalette) +\n    geom_errorbar(aes(ymax=type, ymin=type), linetype=\"longdash\", colour = \"grey\")\n  \n  gg_left <- cowplot::plot_grid(gg1 + rremove(\"legend\"), gg2 + rremove(\"legend\"), ncol=1, nrow=2)\n  gg_res <- cowplot::plot_grid(gg_left, cowplot::get_legend(gg1), rel_widths = c(5, 1))\n  return(gg_res)\n  #ggarrange(gg1, gg2, ncol=1, nrow=2, common.legend = F, legend=\"right\")\n}",
+    "created" : 1522759173857.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3391573047",
+    "id" : "8A4E17FA",
+    "lastKnownWriteTime" : 1522959593,
+    "last_content_update" : 1522959593,
+    "path" : "~/Tundra_exp/R_code/functions.R",
+    "project_path" : "functions.R",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

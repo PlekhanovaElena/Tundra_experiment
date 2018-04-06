@@ -1,0 +1,2 @@
+"0","ynames = colnames(ind)[cols]"
+"0","plot_diff(ind, ynames[1])"
