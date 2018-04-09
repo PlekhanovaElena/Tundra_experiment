@@ -18,7 +18,7 @@ can <- read.xlsx(can_path, 3)
 
 clmn = colnames(can) %in% c("block", "plot", "shrub_height_cm", "forb_height_cm", "graminoid_height_cm", "moss_layer_thickness_cm", "litter_layer_thickness_cm")
 can = can[!is.na(can$block),clmn]
-cols = c(3:7);    
+cols = c(3:7)
 can[,cols] = apply(can[,cols], 2, function(x) as.numeric(as.character(x)))
 can[,1] = factor(can[,1],levels(can[,1])[c(1,3:10,2)])
 

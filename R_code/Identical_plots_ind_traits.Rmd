@@ -1,0 +1,165 @@
+---
+title: "Variation within blocks for canopy variables"
+output:
+  html_document:
+    code_folding: hide
+  html_notebook: default
+  pdf_document: default
+fontsize: 14pt
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 16px;
+  }
+td {  /* Table  */
+  font-size: 10px;
+}
+h1.title {
+  font-size: 42px;
+  color: DarkRed;
+}
+h1 { /* Header 1 */
+  font-size: 32px;
+  color: DarkRed;
+}
+h2 { /* Header 2 */
+    font-size: 25px;
+  color: DarkRed;
+}
+h3 { /* Header 3 */
+  font-size: 22px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkRed;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+&nbsp;
+
+Here we present analysis of the "canopy_traits" sheet of "plant_traits_DPE" table. The table represents data for the "Shrub height, cm", "Graminoid height, cm", "Moss layer thickness, cm", "Litter layer thickness, cm", "Forb height, cm" variables. Each variable representad by 10 observations within each of 3 plots within each of 10 blocks.
+
+We want to test if there are any significant differences between the plots in each block.
+
+```{r, message=FALSE, warning=FALSE}
+library(xlsx)
+library(ggplot2)
+library(ggpubr)
+library(plyr)
+library(lme4)
+source("./functions.R")
+```
+```{r, message=FALSE, warning=FALSE}
+ins_path <- "/home/lena/Tundra_exp/plant_traits_DPE.xlsx"
+ins <- read.xlsx(ins_path, 3)
+
+clmn = colnames(ins) %in% c("block", "plot", "shrub_height_cm", "forb_height_cm", "graminoid_height_cm", "moss_layer_thickness_cm", "litter_layer_thickness_cm")
+ins = ins[!is.na(ins$block),clmn]
+rm(clmn, ins_path)
+
+cols = c(3:7)
+ins[,cols] = apply(ins[,cols], 2, function(x) as.numeric(as.character(x)))
+ins[,1] = factor(ins[,1],levels(ins[,1])[c(1,3:10,2)])
+ins = ins[,c(1:3, 5:6, 7, 4)]
+levels(ins$plot) = substr(levels(ins$plot), 2, 4)
+
+ynames = colnames(ins)[3:ncol(ins)]
+varnames = c("Shrub height, cm", "Graminoid height, cm", "Moss layer thickness, cm", "Litter layer thickness, cm", "Forb height, cm")
+n_samp = 10              # number of observations in each plot
+```
+
+
+# Statistical tests
+&nbsp;
+
+In order to test differences within blocks, we perform ANOVA for blocks that meet ANOVA's assumptions and Kruskal-Wallis test for others
+
+```{r}
+# c(3:ncol(ins))
+test = sapply(c(3:6), function(cl) {
+  if (cl < 6)
+    block_range = c(0:9)
+  else if (cl == 6)
+    block_range = c(5:9)
+  
+  # ANOVA test
+  
+  anpv = sapply(block_range , function(x) {
+    inexes_within_block = (1 + n_samp*3*x):(n_samp*3*x+n_samp*3)
+    formula_modl = as.formula(paste0(colnames(ins)[cl]," ~ plot"))
+    modl = aov(formula_modl, data = ins[ inexes_within_block ,])
+    res = anova(modl)$`Pr(>F)`                                         # results of ANOVA
+    res[2] = shapiro.test(residuals(modl))$p.value                     # normality of residuals
+    res[3] = bartlett.test(ins[ inexes_within_block ,cl], 
+                           ins$plot[ inexes_within_block ])$p.value    # homogeneity of variances
+    
+    tk = TukeyHSD(modl)$plot
+    res[4] = 0
+    if (sum(tk[,4] < 0.05) > 0)
+      res[4] = max(abs(tk[tk[,4] < 0.05,1]))
+    return(res)
+  })
+
+  non_anova_blocks = which((anpv[2, ] < 0.05) | (anpv[3, ] < 0.05))    # block's numbers that do not meet
+                                                                       # ANOVA's assumptions
+  # Kruskal-Wallis for non-normal residuals
+  krpv = sapply( block_range[non_anova_blocks] , function(x) {
+    inexes_within_block = (1 + n_samp*3*x):(n_samp*3*x+n_samp*3)
+    kruskal.test(ins[ inexes_within_block , cl], ins$plot[ inexes_within_block ])$p.value})
+  
+  # Result for ANOVA for normal residuals and Kruskal-Wallis for non-normal residuals
+  if (length(non_anova_blocks) == 0)
+    anpv_res = anpv[1,]
+  else
+    anpv_res = anpv[1,!non_anova_blocks]
+  
+  diff_blocks = c(block_range[which(anpv_res <0.05)], block_range[non_anova_blocks][which(krpv <0.05)]) + 1
+  
+  cat("There are significant differences within ", length(diff_blocks), " blocks of '",
+               varnames[cl-2], "' variable.\n", sep = "")
+  if (length(diff_blocks) > 0) {
+    cat("The differences are in blocks number", diff_blocks, "\n")
+    cat("The maximum significant difference between means within these blocks is", round(max(anpv[4,]),2), "cm.\n")
+  }
+  
+  cat("\n")
+  return(round(max(anpv[4,]),2))
+
+})
+```
+
+We don't compare differences within blocks of "Forb height, cm" variable, because there is too few observations available:
+```{r}
+cat(sum(!is.na(ins$forb_height_cm)), " observations available from the total ", length(ins$forb_height_cm), " observations.")
+```
+
+# Graphical representation of differences within blocks and between blocks
+&nbsp;
+ 
+On the figure each dot represents the mean of the variable within plot (top) or block (bottom), vertical lines represent confidance intervals. The top plot for each variable shows variation within each block, while the bottom plot shows variation between blicks. The dashed lines display the means of variables
+
+```{r, fig.height=20, fig.width=10, message=FALSE, warning=FALSE}
+plot_list <- lapply(c(1:length(ynames)), function(n) plot_diff(ins, ynames[n], varnames[n]))
+cowplot::plot_grid(plotlist=plot_list, ncol=1)
+```
+
+
+
+# Conclusion
+&nbsp;
+There are significant differences for canopy variables within blocks. The mean differences are:
+```{r}
+concl = sapply(c(3:6), function(cl) {
+  vname = substr(varnames[cl - 2], 1, nchar(varnames[cl - 2]) - 4)
+  cat("* for '", vname ,"' variable (", min(ins[,cl], na.rm = T), " — ", max(ins[,cl], na.rm = T), " cm) up to ",test[cl-2], " cm.\n", sep = "")
+})
+```
+We weren't able to test differences in "Forb height, cm" variable because of too few observations available.
+
+&nbsp;
+

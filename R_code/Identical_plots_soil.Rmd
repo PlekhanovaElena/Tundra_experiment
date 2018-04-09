@@ -51,10 +51,16 @@ test = sapply(c(4:ncol(ins)), function(cl) {
   non_anova_blocks = which((anpv[2, ] < 0.05) | (anpv[3, ] < 0.05))    # block's numbers that do not meet
                                                                        # ANOVA's assumptions
   # Kruskal-Wallis for non-normal residuals
-  krpv = sapply( non_anova_blocks , function(x) kruskal.test(ins[(1 + n_samp*3*x):(n_samp*3*x+n_samp), cl], ins[(1 +   n_samp*3*x + n_samp):(n_samp*3*x+n_samp*2), cl], ins[(1 + n_samp*3*x + n_samp*2):(n_samp*3*x+n_samp*3), cl])$p.value)
+  krpv = sapply( c(0:9)[non_anova_blocks] , function(x) {
+    inexes_within_block = (1 + n_samp*3*x):(n_samp*3*x+n_samp*3)
+    kruskal.test(ins[ inexes_within_block , cl], ins$plot[ inexes_within_block ])$p.value})
   
   # Result for ANOVA for normal residuals and Kruskal-Wallis for non-normal residuals
-  n_of_sign_diff = sum(anpv[1,!non_anova_blocks] <0.05) + sum(krpv < 0.05)
+  if (length(non_anova_blocks) == 0)
+    anpv_res = anpv[1,]
+  else
+    anpv_res = anpv[1,!non_anova_blocks]
+  n_of_sign_diff = sum(anpv_res <0.05) + sum(krpv < 0.05)
   
   print(paste0("There are significant differences within ", n_of_sign_diff, " blocks of '", varnames[cl-2], "' variable"))
 })

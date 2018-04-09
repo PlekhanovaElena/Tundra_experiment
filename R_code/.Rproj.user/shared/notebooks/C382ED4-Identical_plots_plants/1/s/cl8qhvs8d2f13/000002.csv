@@ -1,2 +1,0 @@
-"0","plot_list <- lapply(c(1:4), function(n) plot_diff(ins, ynames[n], varnames[n]))"
-"0","cowplot::plot_grid(plotlist=plot_list, ncol=1)"
